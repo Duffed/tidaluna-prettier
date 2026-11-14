@@ -59,7 +59,7 @@ test('tab changes remove enhancements and returning rebuilds them', async () => 
   const { document, window, stop } = setup();
   const tab = document.querySelector('[role="tab"]');
   tab.textContent = 'Plugin Store'; await flush();
-  assert.equal(document.querySelector('.tlp-toolbar'), null);
+  assert.equal(document.querySelector('.tlp-toolbar:not(.tlp-store-toolbar)'), null);
   tab.textContent = 'Plugins'; await flush();
   assert.equal(document.querySelectorAll('.tlp-summary').length, 2);
   document.querySelector('.tlp-card').remove(); await flush();
@@ -104,4 +104,37 @@ test('store groups collapse while product install handlers remain intact', async
   product.querySelector('.tlp-summary').click();
   assert.equal(clicked, 1);
   stop(); window.close();
+});
+
+test('store search combines developer and description, status filters and reset; late results participate', async () => {
+  const { document, window, registry, stop } = setup();
+  document.querySelector('[role="tab"]').textContent = 'Plugin Store';
+  const list = document.querySelector('#list');
+  const product = name => `<div class="MuiGrid-root"><button class="MuiButtonBase-root"><div class="MuiBox-root"><div class="MuiStack-root"><h6 class="MuiTypography-h6"><a>${name}</a></h6></div></div></button></div>`;
+  list.innerHTML = `<div class="MuiStack-root"><div class="MuiBox-root"><div class="MuiStack-root"><h6 class="MuiTypography-h6"><a href="https://example.com">Store</a></h6></div></div><div class="MuiGrid-container">${product('@dev/rich-presence')}${product('@other/lyrics')}</div></div>`;
+  registry.plugins['@other/lyrics'].installed = false;
+  registry.plugins['@dev/rich-presence'].store.package.author = { name: 'Alice' };
+  registry.plugins['@dev/rich-presence'].store.package.description = 'Discord activity';
+  await flush();
+  const group = list.firstElementChild;
+  group.querySelector('.tlp-summary').click();
+  const search = document.querySelector('[aria-label="Plugin Store durchsuchen"]');
+  const select = document.querySelector('[aria-label="Installationsstatus filtern"]');
+  search.value = 'ALICE discord'; search.dispatchEvent(new window.Event('input'));
+  assert.equal(group.classList.contains('tlp-group-closed'), false);
+  assert.equal(list.querySelectorAll('.MuiGrid-root:not(.tlp-store-filtered)').length, 1);
+  select.value = 'available'; select.dispatchEvent(new window.Event('change'));
+  assert.equal(group.classList.contains('tlp-store-filtered'), true);
+  assert.equal(document.querySelector('.tlp-empty').hidden, false);
+  document.querySelector('.tlp-store-toolbar button').click();
+  assert.equal(group.classList.contains('tlp-group-closed'), true);
+  assert.equal(list.querySelectorAll('.tlp-store-filtered').length, 0);
+  select.value = 'available'; select.dispatchEvent(new window.Event('change'));
+  assert.equal(list.querySelectorAll('.MuiGrid-root:not(.tlp-store-filtered)').length, 1);
+  registry.plugins['@new/tool'] = { installed: false, store: { package: { name: '@new/tool' } } };
+  list.querySelector('.MuiGrid-container').insertAdjacentHTML('beforeend', product('@new/tool')); await flush();
+  assert.match(document.querySelector('.tlp-store-toolbar .tlp-count').textContent, /2 von 3/);
+  stop();
+  assert.equal(document.querySelector('[class*="tlp-"]'), null);
+  window.close();
 });

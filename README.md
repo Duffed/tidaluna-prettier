@@ -1,5 +1,7 @@
 # Tidaluna Prettier
 
+Version 1.2.0: Der Plugin Store hat eine eigene Suche nach Name, Entwickler und Beschreibung sowie Filter für alle, installierte und nicht installierte Plugins. Trefferzahlen beziehen sich auf geladene Angebote. Passende Store-Gruppen öffnen sich während der Suche automatisch; Zurücksetzen stellt den gespeicherten Klappzustand wieder her.
+
 Ein eigenständiges Plugin für die **Luna Settings**: Plugins, Plugin Store, Themes, Settings und Supporters.
 
 Version 1.1.0 ergänzt einen eigenen Scrollbereich mit reserviertem Platz für die Playerleiste, sodass die letzten Karten erreichbar bleiben. Alle Tabs erhalten ein einheitliches Karten-, Tab- und Eingabefeld-Design. Store-Gruppen sind einklappbar; Plugin-Angebote und Themes bekommen lesbare Namen und Entwicklerzeilen.

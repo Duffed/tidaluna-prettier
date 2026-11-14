@@ -28,6 +28,80 @@ export function start({ document, registry, storage, MutationObserver, location 
   let toolbar, count, empty, activeList;
   const records = new Map();
   const decorated = new Map();
+  let storeToolbar, storeCount, storeEmpty, storeList;
+  let storeQuery = '', storeFilter = 'all';
+  const storeHidden = new Set();
+  function clearStoreSearch() {
+    storeToolbar?.remove(); storeEmpty?.remove(); storeToolbar = storeList = undefined;
+    for (const node of storeHidden) node.classList.remove('tlp-store-filtered');
+    storeHidden.clear();
+  }
+  function filterStore(list) {
+    if (!list) { clearStoreSearch(); return; }
+    if (storeList !== list) {
+      clearStoreSearch(); storeList = list;
+      storeToolbar = el('div', 'tlp-toolbar tlp-store-toolbar');
+      const search = el('input', ''); search.type = 'search'; search.value = storeQuery;
+      search.placeholder = 'Plugins, Entwickler oder Beschreibung suchen …';
+      search.setAttribute('aria-label', 'Plugin Store durchsuchen');
+      search.addEventListener('input', () => { storeQuery = search.value; refresh(); });
+      const select = el('select', ''); select.setAttribute('aria-label', 'Installationsstatus filtern');
+      for (const [value, label] of [['all', 'Alle Plugins'], ['installed', 'Installiert'], ['available', 'Nicht installiert']]) {
+        const option = el('option', '', label); option.value = value; select.append(option);
+      }
+      select.value = storeFilter;
+      select.addEventListener('change', () => { storeFilter = select.value; refresh(); });
+      const reset = el('button', '', 'Zurücksetzen'); reset.type = 'button';
+      reset.addEventListener('click', () => { search.value = storeQuery = ''; select.value = storeFilter = 'all'; refresh(); });
+      storeCount = el('span', 'tlp-count'); storeCount.setAttribute('role', 'status');
+      storeToolbar.append(search, select, reset, storeCount); list.before(storeToolbar);
+      storeEmpty = el('div', 'tlp-empty', 'Keine passenden Plugins in den geladenen Stores gefunden.'); list.after(storeEmpty);
+    }
+    // Upstream's filename-only search must not unmount developer/description matches.
+    for (const input of list.querySelectorAll('input[placeholder="Search plugins..."]')) {
+      if (input.value) {
+        Object.getOwnPropertyDescriptor(view.HTMLInputElement.prototype, 'value').set.call(input, '');
+        input.dispatchEvent(new view.Event('input', { bubbles: true }));
+        input.dispatchEvent(new view.Event('change', { bubbles: true }));
+      }
+      mark(input.closest('.MuiFormControl-root') || input, 'tlp-native-search');
+    }
+    for (const node of storeHidden) node.classList.remove('tlp-store-filtered');
+    storeHidden.clear();
+    const hide = node => { node.classList.add('tlp-store-filtered'); storeHidden.add(node); };
+    const words = storeQuery.trim().toLocaleLowerCase().split(/\s+/);
+    const filtering = !!storeQuery.trim() || storeFilter !== 'all';
+    let total = 0, visible = 0;
+    for (const group of list.children) {
+      const products = [...group.querySelectorAll('.MuiButtonBase-root.tlp-generic')];
+      if (!products.length) continue;
+      let groupVisible = 0;
+      for (const card of products) {
+        total++;
+        const raw = card.querySelector('.MuiTypography-h6 a')?.textContent;
+        const candidates = Object.values(registry.plugins).filter(p => p.store.package.name === raw);
+        const installed = candidates.some(p => p.installed);
+        const text = `${card.textContent} ${candidates.map(p => {
+          const pkg = p.store.package, label = pluginLabel(pkg);
+          return `${label.raw} ${label.title} ${label.developer} ${typeof pkg.description === 'string' ? pkg.description : ''}`;
+        }).join(' ')}`.toLocaleLowerCase();
+        const match = words.every(word => text.includes(word)) && (storeFilter === 'all' || (storeFilter === 'installed' ? installed : !installed));
+        if (match) { visible++; groupVisible++; } else hide(card.closest('.MuiGrid-root') || card);
+      }
+      if (filtering && !groupVisible) hide(group);
+      const record = decorated.get(group);
+      if (record) {
+        const link = group.querySelector('.MuiTypography-h6 a');
+        const key = `store:${link?.getAttribute('href') || link?.textContent}`;
+        const open = filtering && groupVisible > 0 || expanded[key] !== false;
+        group.classList.toggle('tlp-group-closed', !open);
+        record.summary.setAttribute('aria-expanded', String(open));
+        const chevron = record.summary.querySelector('.tlp-chevron'); if (chevron) chevron.textContent = open ? '⌃' : '⌄';
+      }
+    }
+    storeCount.textContent = `${visible} von ${total} geladenen Plugins`;
+    storeEmpty.hidden = visible !== 0 || !filtering;
+  }
   let styledPage, styledTab, pageStyle, pageClasses = new Map();
   const view = document.defaultView;
   function mark(node, className) {
@@ -37,6 +111,7 @@ export function start({ document, registry, storage, MutationObserver, location 
     pageClasses.get(node).add(className);
   }
   function clearPage() {
+    clearStoreSearch();
     for (const [node, record] of decorated) { record.summary.remove(); node.classList.remove('tlp-generic', 'tlp-group-closed'); }
     decorated.clear();
     for (const [node, classes] of pageClasses) for (const name of classes) node.classList.remove(name);
@@ -184,6 +259,7 @@ export function start({ document, registry, storage, MutationObserver, location 
       const panel = page?.querySelector(':scope > .MuiContainer-root');
       if (!page) { clear(); clearPage(); return; }
       decoratePage(page, panel, tab.textContent.trim());
+      if (tab.textContent.trim() === 'Plugin Store') filterStore(panel?.querySelector(':scope > .MuiStack-root'));
       if (tab.textContent.trim() !== 'Plugins') { clear(); return; }
       const list = panel?.querySelector(':scope > .MuiStack-root');
       if (!list) { clear(); return; }
