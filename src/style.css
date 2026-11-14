@@ -1,0 +1,25 @@
+.tlp-list { display: flex; flex-direction: column; gap: 12px; }
+.tlp-list > .tlp-card { margin: 0 !important; padding: 0 !important; overflow: hidden; border: 1px solid #ffffff18; border-radius: 16px; background: #151b24e8; box-shadow: 0 6px 24px #00000016; }
+.tlp-card > :not(.tlp-summary) { margin: 0 18px 16px !important; }
+.tlp-card > .MuiBox-root > .MuiStack-root > .MuiTypography-h6 > a { display: none; }
+.tlp-card.tlp-collapsed > :not(.tlp-summary) { display: none !important; }
+.tlp-summary { box-sizing: border-box; width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 18px; margin: 0 !important; border: 0; background: transparent; color: #eef3f8; text-align: left; font: inherit; cursor: pointer; }
+.tlp-summary:hover { background: #ffffff06; }
+.tlp-summary:focus-visible, .tlp-toolbar :focus-visible { outline: 2px solid #69ded5; outline-offset: -3px; }
+.tlp-name { font-size: 17px; font-weight: 650; letter-spacing: -.25px; }
+.tlp-author { display: inline-flex; align-items: center; gap: 7px; color: #aebbc9; font-size: 13px; }
+.tlp-avatar { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; background: #304551; color: #b7ece5; font-size: 11px; overflow: hidden; }
+.tlp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.tlp-status { margin-left: auto; border-radius: 20px; padding: 4px 9px; font-size: 11px; background: #ffffff0a; color: #9daabb; }
+.tlp-status[data-state="active"] { background: #54d5b714; color: #85e2c9; }
+.tlp-status[data-state="error"] { background: #ff98751a; color: #ffb394; }
+.tlp-chevron { font-size: 18px; color: #9ba9b8; }
+.tlp-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 16px 0; margin-bottom: 8px; color: #c0ccd8; font: inherit; }
+.tlp-toolbar input, .tlp-toolbar select, .tlp-toolbar button { border: 1px solid #ffffff20; border-radius: 10px; padding: 10px 12px; color: #eaf1f6; background: #171e29; font: inherit; font-size: 13px; }
+.tlp-toolbar input { flex: 1 1 240px; min-width: 120px; }
+.tlp-toolbar button { cursor: pointer; }
+.tlp-toolbar button:hover { border-color: #69ded580; }
+.tlp-count { width: 100%; font-size: 12px; color: #98a8b9; }
+.tlp-empty { padding: 32px; text-align: center; color: #b2c0cf; }
+.tlp-filtered { display: none !important; }
+@media (max-width: 600px) { .tlp-summary { gap: 8px; padding: 14px; } .tlp-name { font-size: 15px; } .tlp-author { font-size: 12px; } }

@@ -1,0 +1,12 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+const root = new URL('../', import.meta.url);
+const source = await readFile(new URL('src/index.mjs', root), 'utf8');
+const css = await readFile(new URL('src/style.css', root), 'utf8');
+const code = source.replace('/* BUILD_STYLES */ ""', JSON.stringify(css));
+const manifest = JSON.parse(await readFile(new URL('src/plugin.json', root), 'utf8'));
+manifest.hash = createHash('sha256').update(code).digest('hex');
+await mkdir(new URL('dist/', root), { recursive: true });
+await writeFile(new URL('dist/tidaluna-prettier.mjs', root), code);
+await writeFile(new URL('dist/tidaluna-prettier.json', root), JSON.stringify(manifest, null, 2));
+console.log('Built dist/tidaluna-prettier.{mjs,json}');
