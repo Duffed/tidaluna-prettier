@@ -26,6 +26,8 @@ test('only mutable Duffed distribution requests bypass cache and cleanup restore
   assert.equal(calls[3][1].cache, 'no-store');
   await target.fetch('https://api.tidal.com/test');
   assert.deepEqual(calls[4], ['https://api.tidal.com/test', undefined]);
+  await target.fetch('https://raw.githubusercontent.com/Duffed/tidaluna-smart-shuffle/main/dist/tidaluna-prettier.json');
+  assert.ok(calls[5][0].startsWith(`${base}/tidaluna-prettier.json?`));
   assert.equal(isDuffedDownload('https://github.com/another/store/releases/download/latest/store.json'), false);
   assert.equal(isDuffedDownload(`${base}/../secret.json`), false);
   stop(); assert.equal(target.fetch, original);

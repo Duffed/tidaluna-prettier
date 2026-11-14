@@ -1,5 +1,7 @@
 # Tidaluna Prettier
 
+Version 1.3.1 ergänzt die interne Auflösung alter Duffed-Raw-Downloadadressen auf die aktuellen Store-Release-Dateien. Die gespeicherten Store- und Installationsadressen bleiben erhalten; dadurch kann ein veralteter Raw-CDN-Cache den Updateknopf nicht blockieren.
+
 Version 1.3.0: Im Plugin Store gibt es **Duffed-Plugins aktualisieren**. Der Knopf prüft die installierten, aktivierten Duffed-Plugins an ihren bestehenden URLs und lädt geänderte Builds neu. Deaktivierte Plugins bleiben deaktiviert und werden übersprungen. Fehler werden angezeigt. Die Downloads der veränderlichen Duffed-Store-Adressen umgehen den HTTP-Cache; fremde Downloads bleiben unverändert.
 
 Zum erstmaligen Übernehmen dieser Korrektur bei der bereits installierten Prettier-Karte **Reload plugin** nutzen und die Luna-Einstellungen erneut öffnen. Falls die alte Version im Speicher bleibt, TIDAL vollständig beenden und neu starten. Store-Adresse und Installation bleiben gleich. Die Aktualisierungsfunktion steht erst nach dem Laden von 1.3.0 zur Verfügung.
