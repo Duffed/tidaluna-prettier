@@ -1,6 +1,58 @@
 const styles = /* BUILD_STYLES */ "";
 const storageKey = 'tidaluna-prettier:expanded:v1';
 
+export function isDuffedDownload(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return false;
+    const path = url.pathname.toLowerCase();
+    return (url.hostname === 'github.com' && /^\/duffed\/tidaluna-smart-shuffle\/releases\/(download\/latest|latest\/download)\/(store\.json|(?:tidaluna-prettier|local\.smart-shuffle)\.(json|mjs))$/.test(path)) ||
+      (url.hostname === 'raw.githubusercontent.com' && /^\/duffed\/(tidaluna-smart-shuffle|tidaluna-prettier)\/main\/dist\/(store\.json|(?:tidaluna-prettier|local\.smart-shuffle)\.(json|mjs))$/.test(path));
+  } catch { return false; }
+}
+
+// Only the user's mutable distribution URLs bypass caching. No unrelated requests are changed.
+export function installUpdateTransport(target) {
+  const original = target.fetch;
+  if (typeof original !== 'function') return () => {};
+  let sequence = 0;
+  function freshFetch(input, init) {
+    const request = typeof input === 'object' && input !== null && 'url' in input;
+    const url = request ? input.url : String(input);
+    const method = init?.method || (request ? input.method : 'GET');
+    if (!isDuffedDownload(url) || method.toUpperCase() !== 'GET') return original.call(target, input, init);
+    const fresh = new URL(url); fresh.searchParams.set('tlp_update', `${Date.now()}-${++sequence}`);
+    const options = { ...init, cache: 'no-store' };
+    return original.call(target, request ? new target.Request(fresh.href, input) : fresh.href, options);
+  }
+  target.fetch = freshFetch;
+  return () => { if (target.fetch === freshFetch) target.fetch = original; };
+}
+
+export async function updateStorePlugins(registry, report, cancelled = () => false) {
+  const plugins = Object.values(registry.plugins).filter(p => p.installed && isDuffedDownload(`${p.url}.json`));
+  // Reloading ourselves removes the current toolbar; do that last.
+  plugins.sort((a, b) => Number(a.name === '@Duffed/tidaluna-prettier') - Number(b.name === '@Duffed/tidaluna-prettier'));
+  let updated = 0, skipped = 0, failed = 0;
+  for (const plugin of plugins) {
+    if (cancelled()) break;
+    if (!plugin.enabled) { skipped++; continue; }
+    try {
+      report(`${pluginLabel(plugin.store.package).title}: Version prüfen …`);
+      const latest = await registry.fetchPackage(plugin.url);
+      if (cancelled()) break;
+      if (!latest.hash || latest.name !== plugin.name) throw new Error('Ungültige Plugin-Metadaten');
+      if (latest.hash === plugin.store.package.hash) continue;
+      await plugin.reload();
+      if (plugin.loadError?._ || plugin.store.package.hash !== latest.hash) throw new Error('Neue Version wurde nicht geladen');
+      updated++;
+    } catch (error) { failed++; report(`${plugin.name}: ${error.message}`); }
+  }
+  const summary = `${updated} aktualisiert · ${skipped} deaktiviert übersprungen · ${failed} fehlgeschlagen`;
+  report(summary);
+  return { updated, skipped, failed };
+}
+
 export function pluginLabel(pkg) {
   const raw = String(pkg.name || 'Plugin');
   const match = raw.match(/^@([^/]+)\/(.+)$/);
@@ -30,6 +82,7 @@ export function start({ document, registry, storage, MutationObserver, location 
   const decorated = new Map();
   let storeToolbar, storeCount, storeEmpty, storeList;
   let storeQuery = '', storeFilter = 'all';
+  let updating = false, updateMessage = '';
   const storeHidden = new Set();
   function clearStoreSearch() {
     storeToolbar?.remove(); storeEmpty?.remove(); storeToolbar = storeList = undefined;
@@ -54,7 +107,15 @@ export function start({ document, registry, storage, MutationObserver, location 
       const reset = el('button', '', 'Zurücksetzen'); reset.type = 'button';
       reset.addEventListener('click', () => { search.value = storeQuery = ''; select.value = storeFilter = 'all'; refresh(); });
       storeCount = el('span', 'tlp-count'); storeCount.setAttribute('role', 'status');
-      storeToolbar.append(search, select, reset, storeCount); list.before(storeToolbar);
+      const update = el('button', '', 'Duffed-Plugins aktualisieren'); update.type = 'button'; update.disabled = updating;
+      const updateStatus = el('span', 'tlp-count', updateMessage); updateStatus.setAttribute('role', 'status');
+      update.addEventListener('click', async () => {
+        if (updating) return;
+        updating = true; update.disabled = true;
+        try { await updateStorePlugins(registry, message => { updateMessage = message; updateStatus.textContent = message; }, () => stopped); }
+        finally { updating = false; update.disabled = false; if (!stopped) refresh(); }
+      });
+      storeToolbar.append(search, select, reset, update, storeCount, updateStatus); list.before(storeToolbar);
       storeEmpty = el('div', 'tlp-empty', 'Keine passenden Plugins in den geladenen Stores gefunden.'); list.after(storeEmpty);
     }
     // Upstream's filename-only search must not unmount developer/description matches.
@@ -307,6 +368,7 @@ export function start({ document, registry, storage, MutationObserver, location 
 
 export const unloads = new Set();
 if (typeof window !== 'undefined' && window.luna?.core?.LunaPlugin) {
+  unloads.add(installUpdateTransport(window));
   let storage;
   try { storage = window.localStorage; } catch {}
   unloads.add(start({ document: window.document, registry: window.luna.core.LunaPlugin, storage,

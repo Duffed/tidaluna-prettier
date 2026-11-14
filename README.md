@@ -1,5 +1,9 @@
 # Tidaluna Prettier
 
+Version 1.3.0: Im Plugin Store gibt es **Duffed-Plugins aktualisieren**. Der Knopf prüft die installierten, aktivierten Duffed-Plugins an ihren bestehenden URLs und lädt geänderte Builds neu. Deaktivierte Plugins bleiben deaktiviert und werden übersprungen. Fehler werden angezeigt. Die Downloads der veränderlichen Duffed-Store-Adressen umgehen den HTTP-Cache; fremde Downloads bleiben unverändert.
+
+Zum erstmaligen Übernehmen dieser Korrektur bei der bereits installierten Prettier-Karte **Reload plugin** nutzen und die Luna-Einstellungen erneut öffnen. Falls die alte Version im Speicher bleibt, TIDAL vollständig beenden und neu starten. Store-Adresse und Installation bleiben gleich. Die Aktualisierungsfunktion steht erst nach dem Laden von 1.3.0 zur Verfügung.
+
 Version 1.2.0: Der Plugin Store hat eine eigene Suche nach Name, Entwickler und Beschreibung sowie Filter für alle, installierte und nicht installierte Plugins. Trefferzahlen beziehen sich auf geladene Angebote. Passende Store-Gruppen öffnen sich während der Suche automatisch; Zurücksetzen stellt den gespeicherten Klappzustand wieder her.
 
 Ein eigenständiges Plugin für die **Luna Settings**: Plugins, Plugin Store, Themes, Settings und Supporters.
@@ -56,7 +60,7 @@ pnpm install --ignore-scripts
 node --test
 ```
 
-Der Build erzeugt `dist/tidaluna-prettier.mjs` und `dist/tidaluna-prettier.json` mit einem Inhalts-Hash. Beide Dateien werden für die direkte Installation mit eingecheckt. Der bestehende Smart-Shuffle-Store verteilt zusätzlich eine Kopie: TidaLuna unterstützt dort nur relative Pluginpfade. Bei Updates beide Dateien auch in dessen `dist/` aktualisieren.
+Der Build erzeugt `dist/tidaluna-prettier.mjs` und `dist/tidaluna-prettier.json` mit einem Inhalts-Hash. Beide Dateien werden für die direkte Installation mit eingecheckt. Der bestehende Smart-Shuffle-Store übernimmt sie über seinen GitHub-Actions-Workflow automatisch: alle 15 Minuten geplant (GitHub kann Läufe verzögern), bei Store-Änderungen oder manuell über **Run workflow**. Manifest und Code kommen vom selben Quellcommit und werden per SHA-256 geprüft. Die bisherige Store-Adresse und die Plugin-Dateinamen bleiben stabil. Beide GitHub-Varianten (`releases/download/latest` und `releases/latest/download`) werden mit aktuellen Builds versorgt. `distribution/` enthält die Vorlagen für den Store-Workflow und dessen Synchronisationsskript.
 
 ## Kompatibilität und Prüfung
 

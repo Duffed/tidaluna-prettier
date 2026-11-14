@@ -1,0 +1,81 @@
+name: Sync and publish plugin store
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  push:
+    branches: [main]
+    paths: [.github/workflows/release.yml, scripts/sync-prettier.mjs, 'dist/**']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-latest-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sync verified Prettier build from its source repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/sync-prettier.mjs
+          node --check dist/tidaluna-prettier.mjs
+          git add dist/tidaluna-prettier.json dist/tidaluna-prettier.mjs
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Sync verified Tidaluna Prettier store build'
+            git push origin HEAD:main
+          fi
+      - name: Publish immutable snapshot and refresh existing store address
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit=$(git rev-parse HEAD)
+          cd dist
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const store = JSON.parse(fs.readFileSync("store.json", "utf8"));
+            for (const name of store.plugins) {
+              if (!/^[a-z0-9.-]+\.mjs$/.test(name)) throw new Error("Invalid store entry");
+              if (!fs.statSync(name).size) throw new Error("Empty plugin code");
+              JSON.parse(fs.readFileSync(name.replace(/\.mjs$/, ".json"), "utf8"));
+            }
+          '
+          prettier=$(node -p 'JSON.parse(require("fs").readFileSync("tidaluna-prettier.json")).version')
+          smart=$(node -p 'JSON.parse(require("fs").readFileSync("local.smart-shuffle.json")).version')
+          digest=$(sha256sum tidaluna-prettier.mjs local.smart-shuffle.mjs store.json | sha256sum | cut -c1-12)
+          tag="store-${smart}-prettier-${prettier}-${digest}"
+          assets=(store.json local.smart-shuffle.json local.smart-shuffle.mjs local.smart-shuffle.mjs.map tidaluna-prettier.json tidaluna-prettier.mjs)
+          printf 'Duffed TidaLuna Store\n\nSmart Shuffle %s · Tidaluna Prettier %s\n\nStore: https://github.com/Duffed/tidaluna-smart-shuffle/releases/download/latest/store.json\n\nUse Duffed-Plugins aktualisieren in Plugin Store. Disabled plugins remain disabled.\n' "$smart" "$prettier" > ../release-notes.md
+          printf '\nStore-build: %s\n' "$digest" >> ../release-notes.md
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" "${assets[@]}" --target "$commit" --title "Duffed plugins: Prettier $prettier / Smart Shuffle $smart" --notes-file ../release-notes.md --latest
+          else
+            gh release edit "$tag" --latest
+          fi
+          if gh release view latest >/dev/null 2>&1; then
+            if gh release view latest --json body --jq .body | grep -Fq "Store-build: $digest"; then
+              echo 'Existing store already matches the verified build.'
+              exit 0
+            fi
+            gh release upload latest "${assets[@]}" --clobber
+            gh api --method PATCH "repos/$GH_REPO/git/refs/tags/latest" -f sha="$commit" -F force=true
+            gh release edit latest --title 'Duffed plugins (rolling download)' --notes-file ../release-notes.md --latest=false
+          else
+            gh release create latest "${assets[@]}" --target "$commit" --title 'Duffed plugins (rolling download)' --notes-file ../release-notes.md --latest=false
+          fi
