@@ -66,3 +66,42 @@ test('tab changes remove enhancements and returning rebuilds them', async () => 
   assert.match(document.querySelector('.tlp-count').textContent, /1 von 1/);
   stop(); window.close();
 });
+
+test('all Luna tabs get bounded scroll space, responsive height and cleanup', async () => {
+  const { document, window, stop, original } = setup();
+  const page = document.querySelector('main');
+  page.getBoundingClientRect = () => ({ top: 70 });
+  Object.defineProperty(window, 'innerHeight', { value: 720, configurable: true });
+  window.dispatchEvent(new window.Event('resize')); await flush();
+  assert.equal(page.style.getPropertyValue('--tlp-available-height'), '500px');
+  for (const title of ['Themes', 'Settings', 'Supporters', 'Plugin Store']) {
+    document.querySelector('[role="tab"]').textContent = title; await flush();
+    assert.ok(page.classList.contains('tlp-page'));
+    assert.ok(document.querySelector('#list').classList.contains('tlp-section-list'));
+  }
+  stop();
+  assert.equal(page.getAttribute('style'), null);
+  assert.equal(document.querySelector('[class*="tlp-"]'), null);
+  window.close();
+});
+
+test('store groups collapse while product install handlers remain intact', async () => {
+  const { document, window, stop } = setup();
+  const list = document.querySelector('#list');
+  document.querySelector('[role="tab"]').textContent = 'Plugin Store';
+  list.innerHTML = '<div class="MuiStack-root"><div class="MuiBox-root"><div class="MuiStack-root"><h6 class="MuiTypography-h6"><a href="https://example.com">Example Store</a></h6></div></div><div class="MuiGrid-container"><button class="MuiButtonBase-root"><div class="MuiBox-root"><div class="MuiStack-root"><h6 class="MuiTypography-h6"><a>@dev/rich-presence</a></h6></div><p>Description</p></div></button></div></div>';
+  let clicked = 0;
+  const product = list.querySelector('.MuiButtonBase-root'); product.addEventListener('click', () => clicked++);
+  await flush();
+  const group = list.firstElementChild;
+  assert.equal(group.querySelector('.tlp-summary').getAttribute('aria-expanded'), 'true');
+  group.querySelector('.tlp-summary').click();
+  assert.ok(group.classList.contains('tlp-group-closed'));
+  group.querySelector('.tlp-summary').click();
+  assert.equal(group.classList.contains('tlp-group-closed'), false);
+  assert.equal(product.querySelector('.tlp-name').textContent, 'Rich Presence');
+  assert.equal(product.querySelector('button'), null);
+  product.querySelector('.tlp-summary').click();
+  assert.equal(clicked, 1);
+  stop(); window.close();
+});

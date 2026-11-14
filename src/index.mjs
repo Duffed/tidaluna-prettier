@@ -27,6 +27,87 @@ export function start({ document, registry, storage, MutationObserver, location 
   let query = '', filter = 'all', stopped = false, queued = false;
   let toolbar, count, empty, activeList;
   const records = new Map();
+  const decorated = new Map();
+  let styledPage, styledTab, pageStyle, pageClasses = new Map();
+  const view = document.defaultView;
+  function mark(node, className) {
+    if (!node || node.classList.contains(className)) return;
+    node.classList.add(className);
+    if (!pageClasses.has(node)) pageClasses.set(node, new Set());
+    pageClasses.get(node).add(className);
+  }
+  function clearPage() {
+    for (const [node, record] of decorated) { record.summary.remove(); node.classList.remove('tlp-generic', 'tlp-group-closed'); }
+    decorated.clear();
+    for (const [node, classes] of pageClasses) for (const name of classes) node.classList.remove(name);
+    pageClasses.clear();
+    if (styledPage) {
+      if (pageStyle === null) styledPage.removeAttribute('style'); else styledPage.setAttribute('style', pageStyle);
+    }
+    styledPage = undefined; styledTab = undefined;
+  }
+  function decoratePage(page, panel, tabName) {
+    if (styledPage !== page || styledTab !== tabName) { clearPage(); styledPage = page; styledTab = tabName; pageStyle = page.getAttribute('style'); }
+    mark(page, 'tlp-page'); mark(panel, 'tlp-panel');
+    // Own the scroll area: the host's bottom margin can fall behind TIDAL's fixed player.
+    // Reserve the player area even when its DOM is changed by another theme/plugin.
+    const top = Math.max(0, page.getBoundingClientRect().top);
+    const height = Math.max(120, (view?.innerHeight || 800) - top - 150);
+    page.style.setProperty('--tlp-available-height', `${height}px`);
+    const list = panel?.querySelector(':scope > .MuiStack-root');
+    if (tabName === 'Plugins') return;
+    mark(list, 'tlp-section-list');
+    if (tabName === 'Plugin Store') mark(list, 'tlp-store-list');
+    for (const child of list?.children || []) {
+      if (child.matches('.MuiStack-root, .MuiBox-root')) mark(child, 'tlp-section');
+    }
+    const alive = new Set();
+    for (const heading of panel?.querySelectorAll('.MuiTypography-h6') || []) {
+      const header = heading.closest('.MuiBox-root');
+      const card = header?.parentElement;
+      const link = heading.querySelector('a');
+      if (!card || !link || !card.matches('.MuiStack-root, .MuiButtonBase-root')) continue;
+      alive.add(card);
+      const raw = link.textContent;
+      const plugin = Object.values(registry.plugins).find(p => p.store.package.name === raw);
+      const authorNode = heading.parentElement?.lastElementChild;
+      const authorName = authorNode !== heading ? authorNode?.textContent?.replace(/^by\s+/i, '').trim() : '';
+      const label = pluginLabel(plugin?.store.package || { name: raw, author: authorName || undefined });
+      // A theme without a manifest uses its URL as its title.
+      if (/^https?:\/\//.test(raw)) {
+        try { label.title = decodeURIComponent(new URL(raw).pathname.split('/').pop()).replace(/\.css$/i, '').replace(/[-_]/g, ' ') || 'Theme'; } catch {}
+      }
+      const signature = JSON.stringify(label);
+      let record = decorated.get(card);
+      if (record?.signature === signature) continue;
+      if (record) record.summary.remove();
+      const isGroup = tabName === 'Plugin Store' && !card.matches('.MuiButtonBase-root');
+      const summary = el(isGroup ? 'button' : 'div', 'tlp-summary');
+      if (isGroup) summary.type = 'button';
+      const name = el('span', 'tlp-name', label.title), by = el('span', 'tlp-author');
+      const avatar = el('span', 'tlp-avatar', label.developer.slice(0, 2).toUpperCase());
+      avatar.setAttribute('aria-hidden', 'true');
+      if (label.avatar) {
+        const img = el('img', ''); img.alt = ''; img.referrerPolicy = 'no-referrer'; img.src = label.avatar;
+        img.addEventListener('error', () => { avatar.textContent = label.developer.slice(0, 2).toUpperCase(); }, { once: true });
+        avatar.replaceChildren(img);
+      }
+      by.append(avatar, el('span', '', label.developer)); summary.append(name, by); summary.title = raw;
+      if (isGroup) {
+        const key = `store:${link.getAttribute('href') || raw}`;
+        const open = expanded[key] !== false;
+        card.classList.toggle('tlp-group-closed', !open);
+        summary.setAttribute('aria-expanded', String(open));
+        summary.append(el('span', 'tlp-chevron', open ? '⌃' : '⌄'));
+        summary.addEventListener('click', () => { expanded[key] = expanded[key] === false; save(); decorated.get(card).signature = ''; refresh(); });
+      }
+      card.prepend(summary); mark(card, 'tlp-generic'); mark(header, 'tlp-original-header');
+      decorated.set(card, { summary, signature });
+    }
+    for (const [node, record] of decorated) if (!alive.has(node)) {
+      record.summary.remove(); node.classList.remove('tlp-generic', 'tlp-group-closed'); decorated.delete(node);
+    }
+  }
   const el = (tag, className, text) => {
     const node = document.createElement(tag); node.className = className;
     if (text !== undefined) node.textContent = text;
@@ -96,11 +177,14 @@ export function start({ document, registry, storage, MutationObserver, location 
     observer.disconnect();
     try {
       // Upstream Page currently does not assign rootId to its DOM node.
-      // Scope via its route, selected Plugins tab, and direct list structure.
+      // Scope via the Luna route and its selected tab; never style TIDAL's own settings.
       const tab = location.search === '?LunaSettings'
-        ? [...document.querySelectorAll('[role="tab"][aria-selected="true"]')].find(n => n.textContent.trim() === 'Plugins') : undefined;
+        ? [...document.querySelectorAll('[role="tab"][aria-selected="true"]')].find(n => ['Plugins', 'Plugin Store', 'Themes', 'Settings', 'Supporters'].includes(n.textContent.trim())) : undefined;
       const page = tab?.closest('.MuiContainer-root');
       const panel = page?.querySelector(':scope > .MuiContainer-root');
+      if (!page) { clear(); clearPage(); return; }
+      decoratePage(page, panel, tab.textContent.trim());
+      if (tab.textContent.trim() !== 'Plugins') { clear(); return; }
       const list = panel?.querySelector(':scope > .MuiStack-root');
       if (!list) { clear(); return; }
       if (list !== activeList) { clear(); activeList = list; list.classList.add('tlp-list'); makeToolbar(list); }
@@ -139,8 +223,10 @@ export function start({ document, registry, storage, MutationObserver, location 
     queued = true; queueMicrotask(() => { queued = false; refresh(); });
   }
   const observer = new MutationObserver(schedule);
+  view?.addEventListener('resize', schedule);
+  view?.addEventListener('popstate', schedule);
   refresh();
-  return () => { stopped = true; observer.disconnect(); clear(); style.remove(); };
+  return () => { stopped = true; observer.disconnect(); view?.removeEventListener('resize', schedule); view?.removeEventListener('popstate', schedule); clear(); clearPage(); style.remove(); };
 }
 
 export const unloads = new Set();

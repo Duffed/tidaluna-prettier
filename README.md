@@ -1,6 +1,8 @@
 # Tidaluna Prettier
 
-Ein eigenständiges Plugin für die **Plugins-Seite in den Luna Settings**.
+Ein eigenständiges Plugin für die **Luna Settings**: Plugins, Plugin Store, Themes, Settings und Supporters.
+
+Version 1.1.0 ergänzt einen eigenen Scrollbereich mit reserviertem Platz für die Playerleiste, sodass die letzten Karten erreichbar bleiben. Alle Tabs erhalten ein einheitliches Karten-, Tab- und Eingabefeld-Design. Store-Gruppen sind einklappbar; Plugin-Angebote und Themes bekommen lesbare Namen und Entwicklerzeilen.
 
 - Einklappbare Plugin-Karten; Klappzustand bleibt lokal gespeichert.
 - Lesbare Namen: `@dev/plugin-name` wird zu **Plugin Name · Avatar · dev**.
@@ -56,6 +58,6 @@ Der Build erzeugt `dist/tidaluna-prettier.mjs` und `dist/tidaluna-prettier.json`
 
 ## Kompatibilität und Prüfung
 
-Die Integration orientiert sich an [TidaLunas PluginsTab](https://github.com/Inrixia/TidaLuna/tree/12b5dd7ce7c1512eb7a9418041bb1e5b0c0627da/plugins/ui/src/SettingsPage/PluginsTab) und dem dortigen `LunaPlugin`-Lebenszyklus. Sie ergänzt die bestehende DOM-Struktur, ohne React-Komponenten oder TidaLuna-Dateien auszutauschen. Eine spätere Änderung der TidaLuna-HTML-Struktur kann eine Anpassung der Selektoren erfordern. Andere Einstellungs-Tabs und der Plugin Store werden nicht umgestaltet.
+Die Integration orientiert sich an [TidaLunas SettingsPage](https://github.com/Inrixia/TidaLuna/tree/12b5dd7ce7c1512eb7a9418041bb1e5b0c0627da/plugins/ui/src/SettingsPage) und dem dortigen `LunaPlugin`-Lebenszyklus. Sie ergänzt die bestehende DOM-Struktur, ohne React-Komponenten oder TidaLuna-Dateien auszutauschen. Eine spätere Änderung der TidaLuna-HTML-Struktur kann eine Anpassung der Selektoren erfordern. Die Scrollhöhe passt sich an die Fensterhöhe an und reserviert 150 Pixel für den Player. Besonders hohe, durch andere Plugins veränderte Player können weiteren Abstand benötigen.
 
 Automatische DOM-Tests prüfen Klappen, Suche, Statusfilter, Tabwechsel, Erhalt der Eingabefelder und vollständiges Aufräumen. Ein Test in einer laufenden TIDAL-Instanz steht noch aus.

@@ -1,4 +1,30 @@
 .tlp-list { display: flex; flex-direction: column; gap: 12px; }
+.tlp-page { box-sizing: border-box; max-height: var(--tlp-available-height); overflow-y: auto !important; overflow-x: hidden; min-height: 0; margin-bottom: 0 !important; padding: 0 12px 48px !important; scrollbar-gutter: stable; scroll-padding-block: 20px 48px; color: #eef3f8; }
+.tlp-page > .MuiTabs-root { position: sticky; top: 0; z-index: 3; background: #111820f5; border-bottom: 1px solid #ffffff16; border-radius: 12px 12px 0 0; }
+.tlp-page .MuiTab-root { color: #aebbc9; min-width: 0; }
+.tlp-page .MuiTab-root.Mui-selected { color: #85e2c9; }
+.tlp-page .MuiTabs-indicator { background: #85e2c9; }
+.tlp-panel { margin: 20px 0 0 !important; padding: 0 !important; width: 100% !important; }
+.tlp-section-list { gap: 14px; }
+.tlp-section-list > .tlp-section { box-sizing: border-box; margin: 0 !important; padding: 18px !important; border: 1px solid #ffffff18; border-radius: 16px; background: #151b24e8; min-width: 0; }
+.tlp-generic { border: 1px solid #ffffff18 !important; border-radius: 16px !important; background: #151b24e8 !important; min-width: 0; }
+.tlp-generic > .tlp-summary { padding: 10px 0 16px; cursor: default; }
+.tlp-generic > button.tlp-summary { cursor: pointer; }
+.tlp-generic > button.tlp-summary > .tlp-chevron { margin-left: auto; }
+.tlp-generic > .tlp-original-header .MuiTypography-h6 > a { display: none; }
+.tlp-generic > .tlp-original-header > .MuiStack-root { flex-wrap: wrap; row-gap: 8px; }
+.tlp-generic > .tlp-original-header > .MuiStack-root > :last-child:not(.MuiTypography-h6) { max-width: 100%; }
+.tlp-group-closed > :not(.tlp-summary) { display: none !important; }
+.tlp-store-list .MuiGrid-container { align-items: stretch; }
+.tlp-store-list .MuiGrid-container > .MuiGrid-root { min-width: 0; }
+.tlp-store-list .MuiButtonBase-root.tlp-generic { display: flex; flex-direction: column; align-items: stretch; height: 100%; padding: 16px; box-shadow: none; }
+.tlp-store-list .MuiButtonBase-root.tlp-generic > .tlp-summary { pointer-events: none; padding: 0 0 12px; }
+.tlp-store-list .tlp-name, .tlp-section .tlp-name { overflow-wrap: anywhere; }
+.tlp-page .MuiOutlinedInput-root { border-radius: 10px; background: #171e29; }
+.tlp-page .MuiOutlinedInput-notchedOutline { border-color: #ffffff20; }
+.tlp-page .MuiButton-root { border-radius: 10px; text-transform: none; }
+.tlp-page .MuiAvatar-root { border: 1px solid #ffffff20; }
+@media (max-width: 700px) { .tlp-store-list .MuiGrid-container > .MuiGrid-root { width: 100%; } .tlp-store-list > .tlp-section:first-child { flex-wrap: wrap; gap: 12px; } }
 .tlp-list > .tlp-card { margin: 0 !important; padding: 0 !important; overflow: hidden; border: 1px solid #ffffff18; border-radius: 16px; background: #151b24e8; box-shadow: 0 6px 24px #00000016; }
 .tlp-card > :not(.tlp-summary) { margin: 0 18px 16px !important; }
 .tlp-card > .MuiBox-root > .MuiStack-root > .MuiTypography-h6 > a { display: none; }
